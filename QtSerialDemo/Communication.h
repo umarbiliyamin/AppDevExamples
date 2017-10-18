@@ -52,50 +52,53 @@ public:
         *stream << toSendObject;
         const qint64 endPos = stream->device()->size();
 
-        // Visszaugrunk és beírjuk a helyes üzenet méretet.
+        // Jumping back and setting the message size to the correct value.
         stream->device()->seek(startPos);
         msgSize = endPos - startPos;
         *stream << msgSize;
-        // Visszaugrunk az üzenet végére
+        // Juping forth to the end of the message
         stream->device()->seek(endPos);
 
-        // Ténylegesen elküldjük az üzenetet.
-        //  (Ez absztrakt metódus, majd minden protokoll implementálja, ahogy kell.)
+        // Sending out the message
+        //  (This is an abstract method, each protocol should implement according to their needs.)
         sendBufferContent();
     }
 
 signals:
-    /** Hibajelzés. */
-    // Ezt majd minden protokoll megfelelően beköti.
+    /** Error notification. */
+    // Each protocol should connect it properly.
     void errorOccurred(const QString&);
 
-    /** Egy teljes üzenet megérkezett. */
+    /** A full message arrived */
     void dataReady(QDataStream& stream);
 
 protected:
-    /** Az adat fogadási stream. A connectToDevice() állítja be. */
+    /** Stream for receiving data. Setted by the connectToDevice(). */
     QDataStream *receiveStream;
 
-    /** Tényleges küldés előtt ide kerül be minden küldendő adat.
-     * A getSendStream() metódussal lehet elérni. */
+    /**
+     * Before sending out all data will be stored temporarly here
+     * Can be reached through the getSendStream() method. */
     QByteArray sendBuffer;
 
-    /** Visszaad egy streamet, ami a tényleges adatküldéshez a sendBuffer-be beírja a
-     * küldendő adatokat. Utána már csak a sendBufferContent() metódust kell meghívni.
-     * Kívülről a send() metódust kell használni, az tovább hív ide. */
+    /**
+     * Gives back a stream, which writes the data to the sendBuffer
+     * Only the sendBufferContent() method should be called afterward.
+     * From outside the send() method should be used, that will call this method. */
     std::unique_ptr<QDataStream> getSendStream();
 
-    /** Ténylegesen elküldi a sendBuffer tartalmát. A leszármazott osztályoknak a
-     * protokolljuknak megfelelően kell implementálniuk. */
+    /**
+     * Sends out the content of the buffer. The child classes should implement it a
+     * according to their protocol. */
     virtual void sendBufferContent() = 0;
 
 private:
-    /** Az éppen fogadott üzenet mérete. A dataReceived() használja. */
+    /** The size of the currently under receiving message. Used by the dataReceived() slot. */
     qint32 currentMessageSize;
 
 protected slots:
-    /** Adat érkezett, de nem feltétlenül egy egész üzenet.
-     * A leszármazott osztályok ezen kereszül jelzik, hogy van új adat.
+    /** Part of a message received
+     * The child classes use this method to sign that data is received
      */
     void dataReceived();
 };

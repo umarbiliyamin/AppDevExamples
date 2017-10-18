@@ -37,39 +37,39 @@ QDataStream *Communication::getReceiveStream()
 
 void Communication::dataReceived()
 {
-    // Addig olvasunk, amíg nem jön meg egy egész üzenet.
-    //  Utána kiadunk egy Communication::dataReady signalt.
+    // Reading until a full message arrives
+    // Than emitting a Communication::dataReady signal.
     QDataStream &inStream = *getReceiveStream();
     QIODevice *socket = inStream.device();
 
     if (currentMessageSize == 0) {
-        // Új üzenet kezdődik
-        // Még nem tudjuk a csomag méretét
+        // New message begins
+        // We don't know the size of the message yet.
         if (socket->bytesAvailable() < (int) sizeof(qint32)) {
-            // Még a csomag mérete sem jött meg.
+            // Even the size of the message has not been arrived
             return;
         }
 
-        // Üzenet hosszának beolvasása
+        // Reading the size of the message
         inStream >> currentMessageSize;
     }
 
-    // Már tudjuk a csomag méretét.
+    // Now we know the size of the message
 
     if (socket->bytesAvailable() < (int) (currentMessageSize - sizeof(qint32))) {
-        // Nem jött még meg az egész csomag.
+        // The full packet hasn't been arrived yet.
         return;
     }
 
-    /* Jelezzük, hogy van új adat. Amit átadunk, az az id és méret utáni adattartalom.
-     * Tömb esetében a QVector úgy szerializálja ki magát, hogy abban benne van a méret is. */
+    /* Signal that new message has been arrived. We pass the data after the id and size.
+     * In case of an array the QVector deserialize itself by containing its size. */
     emit dataReady(inStream);
 
-    // Lehet, hogy még egy következő üzenet elejét is megkaptuk.
+    // It is possible that we received another message part
     currentMessageSize = 0;
     if (socket->bytesAvailable() > 0) {
-        /* A QTimer-t használva még egyszer belelövünk
-         * ebbe a slotba, hogy feldolgozza a maradék fogadott bytokat is. */
+        /* By using the QTimer-t we call this slot again to process the remaining
+         * received bytes. */
         QTimer::singleShot(0, this, SLOT(dataReceived()));
     }
 }

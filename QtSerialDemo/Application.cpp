@@ -14,7 +14,7 @@ void Application::dataReady(QDataStream& inStream)
 {
     QString text;
     inStream >> text;
-    qWarning() << "A soros porton üzenet érkezett: " << text;
+    qWarning() << "Data received on serial port: " << text;
 }
 
 void Application::startSending()
@@ -29,8 +29,8 @@ void Application::tick()
     counter++;
     if (counter > 10)
     {
-        qDebug() << "10-szer lefutott a tick, itt a demó vége.";
-        // A QCoreApplication osztálynak van exit() metódusa.
+        qDebug() << "The tick executed 10 times, demo is ending.";
+        // The QCoreApplication class has exit() method.
         this->exit(0);
         return;
     }
