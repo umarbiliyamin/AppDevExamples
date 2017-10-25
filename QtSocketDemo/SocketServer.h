@@ -5,66 +5,68 @@
 #include <QDataStream>
 #include <memory>
 
-// Ez kell a currentConnectionSocket deklarálásához. Viszont az csak pointer,
-//  így felesleges lenne beincludolni, mert nem kell tudni a tartalmát (méretét).
+//It is required to declare the currentConnectionSocket. Although it is only a pointer,
+//therefore it is not required to be included, only to forward declare,
+//because the content and the size does not matter.
 class QTcpSocket;
 
 /**
- * @brief A szerver oldali kommunikáció osztálya.
- * A serverSocket köré épül. Ha új kapcsolat jön, a newConnection slot kapja meg
- * a sockettől a jelzést. Ekkor elmenti a currentConnectionSocket-be a socketet
- * és beköti a handleError és dataReceived slotokat.
+ * @brief  Wrapper object of the server side communication.
+ * All function are built upon the QTcpServer type serverSocket object.
+ * If a new connection has been established, the newConnection slot will be informed.
+ * It then saves the newly created socket into the currentConnectionSocket and
+ * connect the handlerError and the dataReceived slots.
  *
- * A dataReady signal jelzi, ha egy teljes üzenet beérkezett.
+ * The data ready signal signs that a full message has been arrived.
  *
- * A szerver és a kliens a már felépített kommunikáció használatában megegyezik.
- * Itt didaktikai okokból szándékosan duplázott a forráskód.
+ * The established communication of the server and the client are the same.
+ * The source code is doubled only for teaching purpouses.
  */
 class SocketServer : public QObject
 {
-    // Ez kell ahhoz, hogy rendes QObjectünk legyen és a slotok működjenek.
+    //See the comment in the Application class
     Q_OBJECT
 
 public:
-    /** Konstruktor */
+    /** Constructor */
     SocketServer();
     ~SocketServer() = default;
 
-    /** Elindítja a szervert és a megadott porton fog figyelni. */
+    /** Starts the server which will listen on the given port. */
     void start(unsigned int port);
 
-    /** Üzenet küldése. */
+    /** Sending a text message */
     void send(QString text);
 
 private:
-    /** A szerver oldali kommunikáció mögött álló QTcpServer socket. */
+    /** The QTcpServer socket which is responsible for the server side communication. */
     QTcpServer serverSocket;
 
-    /** Az éppen nyitott kapcsolat sockete. */
+    /** The socket of the currently opened socket. */
     QTcpSocket *currentConnectionSocket = nullptr;
 
-    /** Az adatfogadáshoz használt stream. */
+    /** The stream used for receiving data. */
     std::unique_ptr<QDataStream> receiveStream;
 
-    /** Az éppen fogadott üzenet mérete. */
+    /** The size of the currently received data. */
     qint32 currentMessageSize;
 
 signals:
-    /** Ez jelzi, ha egy egész üzenet beérkezett. A fogadó oldalnak
-     * az egész üzenetet ki kell olvasnia a streamből. */
+    /** Emitted when a full message is received.
+     * It is mandatory to read out the full message on the handler side. */
     void dataReady(QDataStream&);
 
 private slots:
-    /** A szerver socket jelzi, hogy új kapcsolat érkezett. */
+    /** The server socket signs that a new connection has been established. */
     void newConnection();
 
-    /** A kapcsolat lezárását jelzi. */
+    /** Signs that the connection has been closed. */
     void disconnected();
 
-    /** A socket hibát jelez. */
+    /** Signs that the socket encountered an error. */
     void handleError(QAbstractSocket::SocketError socketError);
 
-    /** Adat érkezett. Nem biztos, hogy egy teljes üzenetnyi. */
+    /** Data received. It is not sure that a whole message. */
     void dataReceived();
 };
 

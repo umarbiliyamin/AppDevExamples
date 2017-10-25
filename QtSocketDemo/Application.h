@@ -8,56 +8,63 @@
 #include "SocketServer.h"
 
 /**
- * @brief Az alkalmazás osztály.
- * A demó során létrejön egy TCP socket szerver és egy hozzá kapcsolódó kliens. Bármelyik is fogad adatot (a másiktól),
- * az ebben az osztályban köt ki és itt kezeljük le, hogy mi történjen.
+ * @brief The application class.
  *
- * Konstruktor paraméterként kapja meg a szerver és kliens socket kommunikációs
- * objektumokat, amiken keresztül a demót futtatja.
+ * During the demo a TCP socket server and a client will be created
+ * and the client will be connected to the listening server.
+ * If either socket (server or client) receives data,
+ * that will be end up here. And here will be handled.
  *
- * A clientDataReady és serverDataReady slotokat beköti a SocketServer és SocketClient
- * dataReady signaljára, a tick-et pedig egy QTimer-re. Az előbbiek kiírják, ha jön adat, a tick pedig
- * elküld egy "Mizu?" üzenetet a kliensen keresztül.
+ * The constructor receives the server and
+ * the client objects as parameters.
  *
- * Ha a szerver oldal kap "Mizu?" stringet, akkor "Minden OK." választ küld.
+ * The dataReady signals of the SocketServer and SocketClient
+ * will be connected to the serverDataReady and clientDataReady slots.
+ * Both slots will print out the received data.
+ * The tick slot will be connected to the signal of a QTimer
+ * and it will send a "What's up, Doc?" message every time it is called.
+ *
+ * If the server side receives a "What's up, Doc?" string,
+ * it will send back the "Everything OK" message.
  */
 class Application : public QCoreApplication
 {
-    // A socket rendszer nem működik, ha nem megfelelő QObject az osztályunk.
-    // Ez a makró kiegészíti az osztályt a Qt QObject-jéhez szükséges funkcionalitásokkal.
+    //The socket system won't work if our class is not a proper QObject.
+    //This macro extends the class with the required QObject functionality
     Q_OBJECT
 
 public:
-    /** Konstruktor. A parancssori paramétereket nem használja. A server és client
-     * dependency injectionként érkezik. */
+    /** Constructor. Not using the command line arguments.
+     * The server and client objects arrive as dependency injection.*/
     Application(int argc, char *argv[], SocketServer& server, SocketClient& client);
     ~Application() = default;
 
-    /** A demó indítása. Elindítja a timer-t, ami a tick-et fogja triggerelni. */
+    /** Starting the demo. Starts the timer which triggers the tick.*/
     void startSending();
 
 private:
-    /** Szerver oldali kommunikáció. */
+    /** Server side communication. */
     SocketServer& server;
 
-    /** Kliens oldali kommunikáció. */
+    /** Client side communication. */
     SocketClient& client;
 
-    /** A periodikus "Mizu?" üzenetküldésért felelős időzítő. */
+    /** The timer which is responsible for the periodic sending
+     * of the "What's up, Doc?" message.*/
     QTimer timer;
 
-    /** Számláló, hogy 10 üzenetküldés után leálljon a program. */
+    /** Counter used for stop the application after 10 iteration. */
     int counter;
 
 private slots:
-    /** A client dataReady signaljához kötött slot. Csak megjeleníti a fogadott üzenetet. */
+    /** Slot connecto to the dataReady signal. Prints out the received message. */
     void clientDataReady(QDataStream& inStream);
 
-    /** A server dataReady signaljához kötött slot. "Mizu?" kérdés esetén
-     * ez küldi vissza a választ. */
+    /** The slot which is connected to the server's dataReady signal.
+     * Sends back the response to the "What's up, Doc?" message. */
     void serverDataReady(QDataStream& inStream);
 
-    /** A kliens oldal periodikusan küld "Mizu?" üzeneteket a szervernek. */
+    /** The client side sends periodically the "What's up, Doc?" message to the server. */
     void tick();
 };
 

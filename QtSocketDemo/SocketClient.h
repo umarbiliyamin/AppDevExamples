@@ -6,15 +6,15 @@
 #include <QDataStream>
 
 /**
- * @brief A kliens oldali kommunikációt beburkoló objektum.
- * A benne lévő socket objektum köré épül az összes funkció.
+ * @brief Wrapper object of the client side communication.
+ * All function are built upon the QTcpSocket type socket object.
  *
- * A szerver és a kliens a már felépített kommunikáció használatában megegyezik.
- * Itt didaktikai okokból szándékosan duplázott a forráskód.
+ * The established communication of the server and the client are the same.
+ * The source code is doubled only for teaching purpouses.
  */
 class SocketClient : public QObject
 {
-    // Ez minden QObjectben kell, különben nem működnek például a slotok.
+    //See the comment in the Application class
     Q_OBJECT
 
 public:
@@ -22,36 +22,39 @@ public:
     SocketClient();
     ~SocketClient() = default;
 
-    /** Felépíti a kapcsolatot a szerverrel és a socket signaljait beköti
-     * a handleError és dataReceived slotokra. Ezen kívül a fogadáshoz
-     * szükséges receiveStream-et létrehozza és a sockethez köti. */
+    /** Builds up the connection with the server and connects the signals
+     * of the socket to the handlerError and dataReceived slots.
+     * Also creates the receiveStream and binds it to the socket. */
     void connect(QString url, int port);
 
-    /** Szöveges üzenetet küld a socketen keresztül. */
+    /** Sends a text message over the socket.*/
     void send(QString text);
 
 private:
     /** The underlying QTcpSocket instance. */
     QTcpSocket socket;
 
-    /** Az adatfogadásra szolgáló stream. A connect() hozza létre
-     * és köti a sockethez. */
+    /** The stream which is used for storing the received data.
+     * The connect function instantiates and connects it to the socket */
     std::unique_ptr<QDataStream> receiveStream;
 
-    /** Az éppen fogadott csomag mérete.
-     * Azért kell, mert egy dataReceived hívással nem biztos, hogy
-     * egy teljes üzenet jön át. */
+    /** The size of the currently received packet.
+     * It is required because it can happen,
+     * that only a part of a message arrives during a dataReceived call. */
     qint32 currentMessageSize;
 
 signals:
     /** Akkor emittálódik, amikor egy teljes üzenet beérkezett.
      * Fontos, hogy a kezelő oldal ürítse is ki a QDataStreamet. */
+
+    /** Emitted when a full message is received.
+     * It is mandatory to clear the QSocketStream on the handler side. */
     void dataReady(QDataStream&);
 
 private slots:
-    /** A socket hibák fogadására szolgál. */
+    /** Handling socket errors.*/
     void handleError(QAbstractSocket::SocketError socketError);
-    /** A socket adatfogadását jelzi. */
+    /** Handling the receiving of data on the socket. */
     void dataReceived();
 };
 

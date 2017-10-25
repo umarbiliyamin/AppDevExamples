@@ -11,134 +11,135 @@ SocketServer::SocketServer()
 
 void SocketServer::start(unsigned int port)
 {
-    // A szerver socket megnyitja a portot.
+    // The server socket opens the port.
     if (!serverSocket.listen(QHostAddress::Any, port))
     {
-        qWarning() << "SocketServer::Start: Nem sikerült megnyitni a server socketet: ";
+        qWarning() << "SocketServer::Start: Opening server socket failed: ";
         qWarning() << serverSocket.errorString();
     }
     else
     {
-        qWarning() << "SocketServer::Start: A server socket bejövő kapcsolatra vár...";
+        qWarning() << "SocketServer::Start: The server socket is waiting for incomming connections...";
     }
 
-    // Bekötjük a newConnection slotot.
+    // We connect the newConnection slot.
     connect(&serverSocket, &QTcpServer::newConnection, this, &SocketServer::newConnection);
 }
 
 void SocketServer::newConnection()
 {
-    qDebug() << "SocketServer::newConnection: Bejövő kapcsolat...";
-    // Elkérjük a server sockettől a kommunikációra használt socketet.
+    qDebug() << "SocketServer::newConnection: Incomming connection...";
+
+    //Grabbing the communication socket from the server socket.
     QTcpSocket *newSocket = serverSocket.nextPendingConnection();
     if (newSocket)
     {
-        // Bekötjük a disconnected slotot.
+        // Connecting the disconnected slot.
         connect(newSocket, &QTcpSocket::disconnected, this, &SocketServer::disconnected);
 
+        //If we have a previously active differenct socket we should disconnect
         if (currentConnectionSocket != nullptr && newSocket != currentConnectionSocket)
         {
-            // Már volt egy kapcsolat, annak leválasztjuk a signaljait.
-            qDebug() << "SocketServer::newConnection: Korábbi socket signaljainak leválasztása.";
-            // Ősosztályok signaljainál nem mindig működik még az új connect szintaxis:
-            //  https://codereview.qt-project.org/#/c/55606/
+
+            qDebug() << "SocketServer::newConnection: Disconnecting the signals of previous connection.";
+
             QObject::disconnect(currentConnectionSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(CommunicationTcpSocket::handleError(QAbstractSocket::SocketError)));
             QObject::disconnect(currentConnectionSocket, SIGNAL(readyRead()), this, SLOT(dataReceived()));
         }
-        qDebug() << "SocketServer::newConnection: Új socket signaljainak csatlakoztatása.";
-        // Elmentjük a socketet
+        qDebug() << "SocketServer::newConnection: Connecting the signals of the new connection.";
+        // Saving the socket.
         currentConnectionSocket = newSocket;
         connect(currentConnectionSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleError(QAbstractSocket::SocketError)));
         connect(currentConnectionSocket, SIGNAL(readyRead()), this, SLOT(dataReceived()));
 
-        // Létrehozzuk az adatfogadási streamet és a sockethez kötjük.
+        // Creating the data receve stream and connect it to the socket.
         receiveStream = std::make_unique<QDataStream>(currentConnectionSocket);
 
-        qWarning() << "SocketServer::newConnection: Az új kapcsolat felépült.";
+        qWarning() << "SocketServer::newConnection: Connection established.";
     }
 }
 
 void SocketServer::disconnected()
 {
-    qWarning() << "SocketServer::disconnected: Lezáródott a kapcsolat.";
+    qWarning() << "SocketServer::disconnected:";
 }
 
 void SocketServer::dataReceived()
 {
-    qDebug() << "SocketClient::dataReceived: új adat érkezett";
+    qDebug() << "SocketClient::dataReceived:";
 
     QDataStream &inStream = *receiveStream;
     QIODevice *socket = inStream.device();
 
     if (currentMessageSize == 0) {
-        // Teljesen új adatcsomag érkezett, először a mérete jön át.
+        // New message begins.
+        // We don't know the size of the message yet.
         if (socket->bytesAvailable() < (int) sizeof(qint32)) {
-            // Még nem jött át annyi byte, amennyi a méret mérete.
+            // Even the size of the message has not been arrived
             return;
         }
 
-        // A csomag méretének beolvasása.
+        // Reading the size of the message.
         inStream >> currentMessageSize;
     }
-    // Itt már tudjuk a csomag méretét.
+    // Now we know the size of the message.
 
     if (socket->bytesAvailable() < (int) (currentMessageSize - sizeof(qint32))) {
-        // Még nem jött meg az egész csomag.
+        // The full message hasn't been arrived yet.
         return;
     }
 
-    // Jelezzük, hogy van új adat. Amit átadunk, az a méret utáni adattartalom.
+    /* Signal that new message has been arrived. We pass the data after size.*/
     emit dataReady(inStream);
 
-    // Lehet, hogy több adat is jött, és akkor egy következő üzenet elejét
-    //  is megkaptuk.
+    // It is possible that we received parts of another message too.
     currentMessageSize = 0;
     if (socket->bytesAvailable() > 0) {
-        // A QTimer-t használva még egyszer belelövünk
-        //  ebbe a slotba, hogy feldolgozza a maradék fogadott bytokat is.
+        /* By using the QTimer-t we call this slot again to process the remaining
+         * received bytes. */
         QTimer::singleShot(0, this, SLOT(dataReceived()));
     }
 }
 
 void SocketServer::handleError(QAbstractSocket::SocketError socketError)
 {
-    qDebug() << "SocketServer::handleError: A socket hibát jelzett: " << socketError;
+    qDebug() << "SocketServer::handleError: " << socketError;
 }
 
 void SocketServer::send(QString text)
 {
-    // Az adatküldésre használt buffer.
-    // Ez csak a küldéshez kell, így itt hozzuk létre.
+    //Buffer for sending data
+    //It is required only for sending therefore we create it here.
     QByteArray sendBuffer;
 
-    // Létrehozunk egy streamet, amivel tudunk írni a bufferbe.
-    // Streamet nem olyan egyszerű létrehozni, mivel pl. nem lehet őket másolni.
+    //We create a stream by with we can write into the buffer
+    //It is hard to create a stream, since i.e. they cannot be copied.
     auto stream = std::unique_ptr<QDataStream>(new QDataStream(&sendBuffer, QIODevice::WriteOnly));
 
-    // Az üzenet eleje a méretet tartalmazza, amit meg is kell határozni.
-    // Elmentjük, hol állunk most a streamben.
+    //The beginning of the message contains the size which should be determinded.
+    //We save where we stay in stream
     const qint64 startPos = stream->device()->size();
-    // Kihagyjuk a méret információ helyét.
-    // Ha majd már tudjuk, visszajövünk és beírjuk ide.
+    // Lefting out the place of the size
+    // If we got the size, we come back and overwrite it.
     qint32 msgSize = 0;
     *stream << msgSize;
 
-    // Most kiírjuk a streambe a tényleges üzenetet.
+    // Now we write the message to the stream.
     *stream << text;
 
-    // Elmentjük, hogy most hol állunk.
+    // We save where we stay in the stream.
     const qint64 endPos = stream->device()->size();
 
-    // Visszaugrunk a méret helyére és beírjuk.
+    // We seek back to the place of the message-size and set it.
     stream->device()->seek(startPos);
     msgSize = endPos - startPos;
     *stream << msgSize;
 
-    // Visszaugrunk a stream végére.
+    // Than we seed forth to the previous position.
     stream->device()->seek(endPos);
 
-    // Ténylegesen elküldjük a buffer tartalmát, ahova a stream írt.
-    qDebug() << "SocketServer::send(): " << sendBuffer.size() << " bájt:\n" << sendBuffer.toHex();
+    // Sending out the content of the stream.
+    qDebug() << "SocketServer::send(): " << sendBuffer.size() << " byte:\n" << sendBuffer.toHex();
     currentConnectionSocket->write(sendBuffer);
     sendBuffer.clear();
 }

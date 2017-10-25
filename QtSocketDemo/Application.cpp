@@ -22,7 +22,7 @@ void Application::serverDataReady(QDataStream& inStream)
     inStream >> text;
     qWarning() << "Message received on the server socket: " << text;
 
-    if (text == "What's up, doc?")
+    if (text == "What's up, Doc?")
     {
         server.send("Everything OK.");
     }
@@ -44,5 +44,5 @@ void Application::tick()
         this->exit(0);
         return;
     }
-    client.send(QString("What's up, doc?"));
+    client.send(QString("What's up, Doc?"));
 }
