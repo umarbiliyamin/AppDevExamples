@@ -38,3 +38,5 @@ Makefile*
 CMakeLists.txt.user*
 
 .DS_Store
+.qmake.stash
+NetworkExample
