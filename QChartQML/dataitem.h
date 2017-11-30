@@ -11,9 +11,7 @@ private:
     QString m_value2;
 
 public:
-    explicit DataItem(QObject *parent = nullptr);
-
-
+    explicit DataItem(QObject *parent = nullptr):QObject(parent){}
 
     QString value1() const{
         return m_value1;

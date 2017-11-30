@@ -12,6 +12,7 @@
 //to use the QList
 #include <QList>
 
+//A class withc periodically emit signals using a QTimer
 class CustumTicker : public QObject
 {
     Q_OBJECT
@@ -34,7 +35,9 @@ public:
     void setDataItems(const QList<QObject*> &dataItems);
 
 signals:
+    //emits a simple signal
     void tick();
+    //emits a signal with two values
     void valueUpdated(QVariant x, QVariant y);
     void dataItemsChanged();
 

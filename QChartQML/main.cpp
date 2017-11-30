@@ -20,8 +20,10 @@ int main(int argc, char *argv[])
     if (engine.rootObjects().isEmpty())
         return -1;
 
+    //Instatiate a CustomTicker object
     CustumTicker* myTicker = new CustumTicker();
 
+    //Adding the reference to the QML context
     engine.rootContext()->setContextProperty("cppTicker",myTicker);
 
     return app.exec();
