@@ -10,6 +10,7 @@ public:
     explicit MyCppClass(QObject *parent = 0);
 
 signals:
+    /* Check the Documentation for QVariant*/
     void updateButtonText(QVariant);
     void updateText();
 
